@@ -8,6 +8,8 @@ import numpy as np #数値計算用
 import matplotlib.pyplot as plt #グラフ描画
 import csv
 import itertools #配列処理用
+from mpl_toolkits.mplot3d import Axes3D #3Dグラフ表示用
+
 
 # import pprint
 import math
@@ -15,11 +17,210 @@ import math
 #####################
 #variables
 #####################
-filePath_input=r"C:\Users\紅林亮平\OneDrive - Shizuoka University\【静岡大学】\【大学講義】\5年生(M1)\講義\後期\火3 画像情報処理論\testPython\input.bmp"#"/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/demo.bmp"#"C:\dev\testPython\demo.bmp"
+filePath_input=r"C:\Users\紅林亮平\OneDrive - Shizuoka University\【静岡大学】\【大学講義】\5年生(M1)\講義\後期\火3 画像情報処理論\testPython\test5.bmp"#"/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/demo.bmp"#"C:\dev\testPython\demo.bmp"
 # filePath_input=r'/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/demo.bmp'
 # filePath_input=r'/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/input.bmp'
 # filePath_output=r'/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/output.bmp'
 filePath_output=r"C:\Users\紅林亮平\OneDrive - Shizuoka University\【静岡大学】\【大学講義】\5年生(M1)\講義\後期\火3 画像情報処理論\testPython\output.bmp"#"/Users/kkrsky/OneDrive - Shizuoka University/【静岡大学】/【大学講義】/5年生(M1)/講義/後期/火3 画像情報処理論/testPython/output.bmp"#"C:\dev\testPython\output.bmp"
+class KMeans():
+    def __init__(self,n_clusters=8,max_iter=300,field=[["xyz"],["xyz"],["xyz"]],bitColorVal=0,_in=0):
+        #field=[["X"],["Y"],["Z"]]
+        self.n_clusters=n_clusters
+        self.max_iter=max_iter
+        self.field=field
+        self.bitColorVal=bitColorVal
+        self._in=_in
+
+        self.centerArry=None #[[x,y,z],[],...]
+        self.labelList=None
+
+        self.colorFieldLabeledArry_output=None
+        self.colorField_output=None
+        pass
+
+    def start(self):
+        self.init()
+        self.doCalc()
+        # self.createOutput_imageField_gray()
+        self.createOutput_labeledArry()
+        self.createOutput_imageField_filter()
+        pass
+    
+    #init
+    def init(self):
+        #中心点生成
+        self.initCenterPoint()
+        self.field=np.array(self.field)
+
+        #ラベルリスト初期化
+        self.labelList=np.zeros(len(self.field))
+
+    def initCenterPoint(self):
+        #test
+        # self.centerArry=[[100,100,100]]
+        # self.centerArry=np.array([[0,0,0],[50,50,50],[100,100,100]])
+        # self.centerArry=np.random.randn(self.n_clusters,3)
+        self.centerArry=np.random.randint(0,255,(self.n_clusters,3))
+        #random
+
+    #calc
+    def doCalc(self):
+        cnt=0
+        labels_prev=None
+        while(cnt<self.max_iter and not (self.labelList == labels_prev).all()):
+            # centerArry_prev=[v for v in self.centerArry]
+            self.createLabel()
+            self.calcMean()
+            
+            #counter
+            labels_prev=self.labelList
+            cnt+=1
+
+        
+        pass
+ 
+    def calcDistance(self,xyz,center):
+        xyz=np.array(xyz)
+        center=np.array(center)
+        return np.sum((xyz-center)**2)
+
+    def calcMean(self):
+        for label_i in range(self.n_clusters):
+            self.centerArry[label_i,:]=self.field[self.labelList==label_i,:].mean(axis=0)
+        pass
+
+    def createLabel(self):
+        for data_i in range(len(self.field)):
+            xyz=self.field[data_i]
+            distanceArry=[self.calcDistance(xyz,center) for center in self.centerArry]
+            minCenter_i=np.argmin(distanceArry)
+            self.labelList[data_i]=minCenter_i
+        self.labelList=np.array(self.labelList,dtype="int32")
+        # print("labelList",self.labelList)
+        
+    def createOutput_labeledArry(self):
+        # self.colorFieldLabeledArry_output=np.zeros((self.n_clusters,3))
+        # for label_i in range(self.n_clusters):
+        #     # self.colorFieldLabeledArry_output=np.insert(self.colorFieldLabeledArry_output,label_i,[self.field[data_i] for data_i,label in enumerate(self.labelList) if label==label_i],axis=0)
+        #     self.colorFieldLabeledArry_output[label_i,:]=self.field[self.labelList==label_i,:]
+        # return self.colorFieldLabeledArry_output
+        self.colorFieldLabeledArry_output=[[self.field[data_i] for data_i,label in enumerate(self.labelList) if label==label_i] for label_i in range(self.n_clusters)]
+        # return self.colorFieldLabeledArry_output
+    def createOutput_imageField_gray(self):
+        # grayColorList=[204]*(self.n_clusters)
+        grayColorList=list(range(0,256,math.floor(255/(self.n_clusters-1))))
+        output=[[grayColorList[label_i]]*3  for label_i in self.labelList]
+        output=np.array(output)
+        self.colorField_output=output.flatten().tolist()
+    def createOutput_imageField_filter(self):
+        labelList2D=None
+        labelList=None
+
+        def convolution(imageData2D,filterArry):
+            #filterは3x3の配列
+            colMax=len(imageData2D)
+            rowMax=len(imageData2D[0])
+            colMax_i=colMax-1
+            rowMax_i=rowMax-1
+
+            imageData2D_out=[[0 for rowItem in col] for col in imageData2D]
+            for col_i in range(1,colMax-1):
+                for row_i in range(1,rowMax-1):
+
+                    #filter
+                    for col_i_fil in range(-1,2):
+                        for row_i_fil in range(-1,2):
+                            imageData2D_out[col_i][row_i]+=filterArry[col_i_fil+1][row_i_fil+1]*imageData2D[col_i+col_i_fil][row_i+row_i_fil]
+            return imageData2D_out
+        def conbineArry(*args):
+            args=list(args)
+            argsLen=len(args)
+            output=None
+            maxItem_i=None
+            maxItem=None
+            #前提：argsは同じ配列の長さ
+            for i in range(argsLen):
+                args[i]=np.array([[rowItem**2 for rowItem in col] for col in args[i]])
+                
+            output=args[0]
+            for i in range(1,argsLen):
+                output+=args[i]
+            output=np.sqrt(output)
+            output=[[255 if rowItem>0 else rowItem for rowItem in col] for col in output]
+            return output
+            pass
+        filterArry=[[0,0,0],[0,-1,1],[0,0,0]]
+        # labelList=[[v]*self.bitColorVal for v in self.labelList]
+        labelList=self.labelList[:]
+        labelList=[255 if(labelList[i]==labelList[i-1]) else 0 for i in range(1,len(labelList))]
+
+        # for i in range(1,len(labelList)):
+        #     if(labelList[i]==labelList[i-1]):
+        #         labelList[i]=255
+        #     else{
+        #         labelList[i]=0
+        #     }
+
+        #     # if()
+        #     # for center in self.centerArry:
+
+
+        # labelList=np.array(labelList)
+        # labelList=labelList.flatten().tolist()
+        # labelList2D=self.makeImage2D(labelList)
+        # labelList2D=convolution(labelList2D,filterArry)
+        # labelList2D=conbineArry(labelList2D)
+        # labelList2D=np.array(labelList2D)
+        # labelList2D=labelList2D.flatten()
+        out=self.color2grayscallRegain(labelList)
+        self.colorField_output=out
+    def getResult_labeledArry(self):
+        return self.colorFieldLabeledArry_output
+    def gerResult_imageField(self):
+        return self.colorField_output
+    
+    #utils
+    def makeImage2D(self,imageData_int):
+        
+
+        bcHeight=self._in["bcHeight"]
+        bcWidth=self._in["bcWidth"]
+        # def convert_1d_to_2d(l, cols):
+        #     return [l[i:i + cols] for i in range(0, len(l), cols)]
+        # out=convert_1d_to_2d(imageData_int,bcWidth*self.bitColorVal)
+        
+        # imageData_int=np.array(imageData_int)
+        # # out=imageData_int.reshape(bcHeight,-1)
+        # out=imageData_int.reshape(-1,bcWidth)
+
+        out=[imageData_int[i:i+bcWidth] for i in range(0,len(imageData_int),bcWidth) if(i%bcWidth==0 and i!=0)]
+        
+        
+        print("convert [imageData] to [imageData2D] height:",len(out),"width:",len(out[0]))
+        return out
+    
+    def color2grayscallRegain(self,gray_compressed):
+        BIT_COROR=None
+        result=list()
+
+
+        
+        result=[[v]*self.bitColorVal for v in gray_compressed]
+        result=np.array(result)
+        result=result.flatten().tolist()
+
+        # print('result',result)
+        return result
+    #全点から、中心からの距離で最小となる点を抽出、ラベリング
+    #ー＞indexで走査
+
+    #ラベリングしたクラスターのx,y,zの平均値を出して中心点を移動させる
+
+    #
+    
+
+
+
 class FileController():
     def __init__(self):
         #setter
@@ -91,15 +292,26 @@ class FileController():
             #24bit color
             # self.binarization24()
             # self.linerGrayLevelTransformation(24)
-            self.color2grayscall2(24)
-            self.edgeFeatureExtraction2(24)
+            # self.color2grayscall2(24)
+            # self.edgeFeatureExtraction2(24)
+            # self.KMeans_Lib(24)
+            self.ImageSegmentation(24)
+
+
+            # imageData=[int(v) for v in self.outputImageData]
+            # tes=self.color2grayscallCompress2(imageData,24)
+            # self.outputImageData=bytes(self.color2grayscallRegain(tes,24))
+
             pass
         elif(self.is32bitColor):
             #32bit color
             # self.binarization32()
             # self.linerGrayLevelTransformation(32)
-            self.color2grayscall2(32)
-            self.edgeFeatureExtraction2(32)
+            # self.color2grayscall2(32)
+            # self.edgeFeatureExtraction2(32)
+            # self.KMeans_Lib(32)
+            self.ImageSegmentation(32)
+
 
             pass
         else:
@@ -298,6 +510,9 @@ class FileController():
             BIT_COROR=4
         elif(bitType==24):
             BIT_COROR=3
+
+        X4=[v for i,v in enumerate(imageData_int) if(i!=0 and i%BIT_COROR==0)]
+        
         
         sumPixcel=0
         for i in range(len(imageData_int)):
@@ -319,6 +534,15 @@ class FileController():
                 sumPixcel+=imageData_int[i]
         # print('gray compressed',result)
         return result
+        return X4
+    def color2grayscallCompress2(self,imageData_int,bitType):
+        res=list()
+        for i in range(len(imageData_int)):
+            if(i==0):
+                pass
+            elif(i%bitType==0):
+                res.append(imageData_int[i])
+        return res
     def color2grayscallRegain(self,gray_compressed,bitType):
         BIT_COROR=None
         result=list()
@@ -330,8 +554,8 @@ class FileController():
         
         result=[[v]*BIT_COROR for v in gray_compressed]
         result=np.array(result)
-        result=result.flatten()
-        result=result.tolist()
+        result=result.flatten().tolist()
+
         # print('result',result)
         return result
     def gray2binarization(self,imageData,thresold):
@@ -620,10 +844,216 @@ class FileController():
 
         self.outputImageData=bytes(resultImageData_int)
         pass
+    def ImageSegmentation(self,bitColor):
+        #三次元マップ
+        #k-means法(ラベリング)
+        #エッジ抽出
+        colorField=None
+        imageData_int=None
+        bcHeight=self._in["bcHeight"]
+        bcWidth=self._in["bcWidth"]
+        if(bitColor==32):
+            bitColorVal=4
+        elif(bitColor==24):
+            bitColorVal=3
 
-        
-        
+        imageData_int=[int(v) for v in self.outputImageData]
+        colorField=self.makeColorField(imageData_int,bitColor)
+        # field=[[0,100,200],[0,100,200],[0,100,200]]
+        # field=[[0,0,0],[25,25,25],[100,100,100],[75,75,75],[200,200,200]]
+        # colorField=np.floor(np.random.randn(100,3)*100)
+        # field=(np.array(range(260440*3))/100).reshape(-1,3)
+        # field=(np.array(range(1000*3))/100).reshape(-1,3)
+        # print(len(field))
+        # print(field[:5])
+        # print(len(colorField),len(colorField[-1:]))
+        km=KMeans(n_clusters=8,max_iter=300,field=colorField,bitColorVal=bitColorVal,_in=self._in)
+        km.start()
+        colorFieldArry=km.getResult_labeledArry()
+        imageData_int=km.gerResult_imageField()
+        self.outputImageData=bytes(imageData_int)
+        # print("tes",tes)
+        self.makeColorFieldGraph(colorFieldArry)
+    
+    def makeImage2D(self,imageData_int,bitColor):
+        bitColorVal=None
 
+        bcHeight=self._in["bcHeight"]
+        bcWidth=self._in["bcWidth"]
+        if(bitColor==24):
+            bitColorVal=3
+        elif(bitColor==32):
+            bitColorVal=4
+        
+        imageData_int=np.array(imageData_int)
+        out=imageData_int.reshape(-1,bcWidth*bitColorVal)
+        print("convert [imageData] to [imageData2D] height:",len(out),"width:",len(out[0]))
+        return out
+
+    def makeColorField(self,imageData_int,bitColor):
+        #imageData [data,data,...]
+        # to 
+        #colorField[pixcel_i][RGB]
+        if(bitColor==32):
+            del imageData_int[3::4]
+
+       
+        imageData_int=np.array(imageData_int)
+        try:
+            imageData_int=imageData_int.reshape(-1,3)
+        except ValueError:
+            print(ValueError,"use instate of np. reshape")
+            imageData_int=[imageData_int[i:i+3] for i in range(0,len(imageData_int),3) if(i%3==0 and i!=0)]
+
+
+
+        return imageData_int
+    def makeColorFieldGraph(self,colorFieldArry):
+        #colorFieldArry[[[pixcel_i][RGB]],...]
+        #グラフを描画
+        # CLUSTER=[[[X[label_i],Y[label_i],Z[label_i]] for label_i,label in enumerate(y_km) if label==class_i] for class_i in range(num_cluster) ]
+        fig = plt.figure()
+        ax = Axes3D(fig) 
+        # ax.set_xlim(0,255)
+        # ax.set_ylim(0,255)
+        # ax.set_zlim(0,255)
+        for data in colorFieldArry:#各クラスタ毎に
+            # data=np.array(data)
+            # tes=np.vsplit(data)
+            x=[v[0] for v in data]#各サンプルのx座標
+            y=[v[1] for v in data]
+            z=[v[2] for v in data]
+
+            ax.scatter(x, y, z, s = 10)
+        plt.show()
+
+
+
+    def KMeans_Lib(self,bitColor):
+        from sklearn.cluster import KMeans
+        from mpl_toolkits.mplot3d import Axes3D
+
+
+        bitColorVal=None
+        bcHeight=self._in["bcHeight"]
+        bcWidth=self._in["bcWidth"]
+        if(bitColor==32):
+            bitColorVal=4
+        elif(bitColor==24):
+            bitColorVal=3
+
+        outputImageData_int=[int(v) for v in self.outputImageData]
+        imageLength=len(outputImageData_int)
+        # print(imageLength)
+        #データチェック
+        
+        calWidth=imageLength/bitColorVal/bcHeight
+        calWidth=int(calWidth)
+
+        if(bcWidth==calWidth):
+            pass
+        else:
+            print("error: not same bcWidth and calWidth")
+            print("bcWidth:",bcWidth,"calWidth:",calWidth)
+            # calWidth=math.floor(calWidth)
+            calWidth=bcWidth
+
+        #データ二次元配列化
+        # imageData2D=[[outputImageData_int[(height_i+1)*(width_i+1)] for width_i in range(calWidth)] for height_i in range(bcHeight)]
+        imageData2D=[]
+        # start_i=0
+        # end_i=0
+        # counter=0
+        def convert_1d_to_2d(l, cols):
+            return [l[i:i + cols] for i in range(0, len(l), cols)]
+        # def convert_1d_to_2d_rows(l, rows):
+        #     return convert_1d_to_2d(l, len(l) // rows)
+        outputImageData_int=np.array(outputImageData_int)
+        # imageData2D=convert_1d_to_2d(outputImageData_int,bitColorVal)
+        imageData2D=outputImageData_int.reshape(-1,bitColorVal)
+        dots = imageData2D
+        # outputImageData_int=self.color2grayscallRegain(X,bitColor)
+        # outputImageData_int2=imageData2D.flatten().tolist()
+        # self.outputImageData=bytes(outputImageData_int2)
+        X5=list()
+        for i in range(len(outputImageData_int)):
+            if(i==0):
+                pass
+            elif(i%bitColorVal==0):
+                X5.append(outputImageData_int[i])
+             
+            
+        X4=[v for i,v in enumerate(outputImageData_int) if(i!=0 and i%bitColorVal==0)]
+        print(len(X4))
+        X3=[line[0] for line in dots]
+        X = dots[:,0]#各サンプルのx座標
+        Y = dots[:,1]
+        Z = dots[:,2]
+        gray=[int(round((X[i]+Y[i]+Z[i])/3)) for i in range(len(X))]
+        # print(len(X))
+
+
+        #初期プロットの表示
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # ax.scatter3D(X,Y,Z)
+        # plt.show()
+
+        #クラスタの個数
+        num_cluster = 8
+
+        #k-means法
+        km = KMeans(n_clusters=num_cluster,
+                    init='k-means++',
+                    n_init=10,
+                    max_iter=600,
+                    tol=1e-04,
+                    random_state=0
+                    )
+        y_km = km.fit_predict(dots)#y_kmにクラスタの番号が保存される
+        
+        # #グラフを描画
+        # CLUSTER=[[[X[label_i],Y[label_i],Z[label_i]] for label_i,label in enumerate(y_km) if label==class_i] for class_i in range(num_cluster) ]
+        # fig = plt.figure()
+        # ax = Axes3D(fig) 
+        # for label_i,c in enumerate(CLUSTER):#各クラスタ毎に
+        #     c=np.array(c)
+        #     x = c[:,0]#各サンプルのx座標
+        #     y = c[:,1]
+        #     z = c[:,2]
+        #     ax.scatter(x, y, z, s = 10)
+        # plt.show()
+
+
+        colorList=list(range(0,256,math.floor(255/(num_cluster-1))))
+
+        X2=[colorList[label] for label in y_km]
+        # for data_i,label in enumerate(km.labels_):
+        # outputImageData_int=self.color2grayscallRegain(X,bitColor)
+        # outputImageData_int2=imageData2D.flatten().tolist()
+        # self.outputImageData=bytes(outputImageData_int2)
+        outputImageData_int=self.color2grayscallRegain(gray,bitColor)
+        self.outputImageData=bytes(outputImageData_int)
+            
+        #     X=[v for v in ]q
+        # print(y_km)
+        # print("aa")
+        # #クラスタ毎に分類
+        # CLUSTER = [[[],[],[]] for _ in range(num_cluster)]
+        # for i,v in enumerate(dots):#各ベクトルに対して
+        #     for j in range(len(y_km)):#分類ラベルに対して
+        #         if y_km[i] == j:#分類ラベルがjだったら
+        #             CLUSTER[j][0].append(v[0])#クラスタjのx座標にベクトルvのx座標を入れる
+        #             CLUSTER[j][1].append(v[1])
+        #             CLUSTER[j][2].append(v[2])
+
+        # #グラフを描画
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # for i,c in enumerate(CLUSTER):#各クラスタ毎に
+        #     x,y,z = c[0],c[1],c[2]#x,y,z座標
+        #     ax.scatter3D(x,y,z)
+        # plt.show()
     def tes(self):
         # lis=list()
         # tes=self.outputImageData
@@ -747,7 +1177,8 @@ class FileController():
         bcBitCount_int    = int.from_bytes(bcBitCount,    "little")
         biCompression_int = int.from_bytes(biCompression, "little")
         print ("(Width,Height)=(%d,%d)" % (bcWidth_int,bcHeight_int))
-        
+        imageData_int=[int(v) for v in imageData]
+        print("total size:",len(imageData_int))
         self._all={
             "bfType":bfType,
             "bfSize":bfSize,
